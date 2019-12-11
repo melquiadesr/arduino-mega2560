@@ -47,7 +47,6 @@ int minutes = 0;
 const int sendPeriod = 5; //minutos
 const String fileName = "data.txt";
 
-
 void setup() {
   Serial.begin(9600);
 
@@ -83,7 +82,7 @@ void loop() {
       
       if (
         minutes >= sendPeriod
-        && sendData(getJsonData())
+        && sendAllData()
       )
       {
         removeData();
@@ -110,6 +109,36 @@ boolean sendData (String data) {
   client.println("Connection: keep-alive");
   client.println();
   client.println(data);
+
+  return true;
+}
+
+boolean sendAllData() {
+  if( ! client.connect(serverIp, serverPort)) {
+    return false;
+  }
+  client.connect(serverIp, serverPort);
+  client.println("POST /sensor_data HTTP/1.1");
+  client.print("Host: ");
+  client.print(serverIp);
+  client.print(":");
+  client.println(serverPort);
+  client.println("Content-Type: application/json");
+  client.print("Content-Length: ");
+  client.println(getDataLenght(),0);
+  client.println("Connection: keep-alive");
+  client.println();
+  client.print("{\"data\":[");
+  
+  dataFile = SD.open(fileName);
+  while (dataFile.available()) {
+    char c = (char) dataFile.read();
+    client.print(c);
+  }
+  dataFile.close();
+  
+  client.print("]}");
+  client.println();
 
   return true;
 }
@@ -157,18 +186,17 @@ void recordData() {
   liters = 0;
 }
 
-String getJsonData() {
-  String json="{\"data\":[";
+float getDataLenght() {
+  float length = 11;
   
   dataFile = SD.open(fileName);
   while (dataFile.available()) {
-    json += (char) dataFile.read();
+    char c = (char) dataFile.read();
+    length++;
   }
   dataFile.close();
   
-  json += "]}";
-  
-  return json;
+  return length;
 }
 
 void removeData() {
